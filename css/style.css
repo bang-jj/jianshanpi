@@ -1,0 +1,98 @@
+/* 主色調：生態綠、湖水藍、米色 */
+:root {
+  --main-green: #4CAF50;
+  --light-green: #8BC34A;
+  --earth-brown: #A1887F;
+  --lake-blue: #4FC3F7;
+  --background: #F1F8E9;
+  --text-dark: #2E3D27;
+  --white: #fff;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-dark);
+  font-family: 'Noto Sans TC', '微軟正黑體', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+header {
+  background: linear-gradient(90deg, var(--main-green) 60%, var(--lake-blue) 100%);
+  color: var(--white);
+  padding: 2rem 0 1rem 0;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(76,175,80,0.1);
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: 2px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem auto;
+  max-width: 900px;
+  width: 95%;
+}
+
+.description {
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(76,175,80,0.08);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  text-align: center;
+}
+
+.description h2 {
+  color: var(--main-green);
+  margin-bottom: 1rem;
+}
+
+.map-section {
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(33,150,243,0.08);
+  padding: 2rem;
+  width: 100%;
+  text-align: center;
+}
+
+.map-section h3 {
+  color: var(--lake-blue);
+  margin-bottom: 1rem;
+}
+
+#main-map {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(33,150,243,0.10);
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 1000px;
+  transition: transform 0.3s;
+  cursor: pointer;
+}
+
+#main-map:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(76,175,80,0.18);
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 0 0.5rem;
+  }
+  .description, .map-section {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+}
