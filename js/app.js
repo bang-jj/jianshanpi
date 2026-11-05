@@ -138,8 +138,10 @@
 
   /* ---------------- 共用片段 ---------------- */
   const dotHtml = p => '<span class="dots" aria-hidden="true">' + p.tags.map(t => '<i style="background:' + TAGS[t].color + '"></i>').join("") + "</span>";
+  const thumbSrc = p => { const ph = typeof p.photo === "string" ? { src: p.photo } : p.photo; return ph ? ph.src.replace(/\/960px-/, "/120px-") : ""; };
   function plantRow(p, right) {
-    return '<li><a class="prow" href="#/plant/' + p.id + '"><span class="pname">' + esc(p.name) + dotHtml(p) + '</span>' +
+    const t = thumbSrc(p);
+    return '<li><a class="prow' + (t ? "" : " nothumb") + '" href="#/plant/' + p.id + '">' + (t ? '<img class="pthumb" src="' + esc(t) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">' : '<span class="pthumb"></span>') + '<span class="pname">' + esc(p.name) + dotHtml(p) + '</span>' +
       '<span class="psci">' + esc(p.sci) + '</span><span class="pmeta">' + right + "</span></a></li>";
   }
   let activeTag = null;
@@ -201,7 +203,10 @@
     if (!p) return renderNotFound();
     const pts = pointsOf[id] || [];
     const zs = zonesOf(id);
-    const photo = p.photo ? '<div class="sign-photo"><img src="' + esc(p.photo) + '" alt="' + esc(p.name) + '"></div>' : "";
+    const ph = typeof p.photo === "string" ? { src: p.photo } : p.photo;
+    const photo = ph ? '<figure class="sign-photo"><img src="' + esc(ph.src) + '" alt="' + esc(p.name) + '的照片" loading="lazy" onerror="this.parentNode.remove()">' +
+      (ph.author ? '<figcaption>照片：' + (ph.page ? '<a href="' + esc(ph.page) + '" target="_blank" rel="noopener">' + esc(ph.author) + "</a>" : esc(ph.author)) + "，" + esc(ph.license || "") + (ph.page ? "，Wikimedia Commons" : "") + "</figcaption>" : "") +
+      "</figure>" : "";
     let near = "";
     if (me && pts.length) {
       const d = Math.min(...pts.map(pt => distM(me, [pt.lat, pt.lng])));
