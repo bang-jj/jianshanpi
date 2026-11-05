@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>植物 QR 牌卡｜尖山埤植物導覽</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@900&display=swap" rel="stylesheet">
+  <style>
+    :root { --leaf: #1d4a37; --ink: #18261f; --muted: #5b6b62; --paper: #f7f9f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Noto Sans TC", system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+    .bar { padding: 20px; max-width: 900px; margin: 0 auto; }
+    .bar h1 { font-family: "Noto Serif TC", serif; margin: 0 0 6px; color: var(--leaf); }
+    .bar p { margin: 0 0 12px; color: var(--muted); }
+    .bar button { font: inherit; padding: 8px 16px; border: 0; border-radius: 10px; background: var(--leaf); color: #fff; cursor: pointer; }
+    .bar label { margin-left: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 0 20px 40px; max-width: 900px; margin: 0 auto; }
+    .card { background: var(--leaf); color: #fff; border-radius: 6px 6px 16px 16px; padding: 16px; display: grid; grid-template-columns: 1fr 104px; gap: 4px 12px; break-inside: avoid; page-break-inside: avoid; }
+    .card h2 { font-family: "Noto Serif TC", serif; font-size: 1.6rem; margin: 0; line-height: 1.2; letter-spacing: .05em; }
+    .card .sci { font-style: italic; font-size: .82rem; margin: 6px 0 0; }
+    .card .fam { font-size: .78rem; color: #cfe2d6; margin: 0; }
+    .card .scan { grid-column: 1 / -1; font-size: .78rem; color: #cfe2d6; margin: 8px 0 0; }
+    .qr { grid-row: 1 / span 3; grid-column: 2; background: #fff; padding: 6px; border-radius: 6px; width: 104px; height: 104px; }
+    .qr img, .qr canvas { width: 92px !important; height: 92px !important; display: block; }
+    @media print {
+      body { background: #fff; }
+      .bar { display: none; }
+      .grid { grid-template-columns: repeat(2, 1fr); padding: 0; }
+      .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <h1>植物 QR 牌卡</h1>
+    <p>列印後可貼在植物旁的小牌子上，掃描就會開啟該植物的介紹頁。網址會依目前網站位置自動產生。</p>
+    <button onclick="print()">列印</button>
+    <label><input type="checkbox" id="mapped" checked> 只列出有標註位置的植物</label>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="data/plants.js"></script>
+  <script src="data/geo.js"></script>
+  <script>
+    (function () {
+      var base = location.href.replace(/signs\.html.*$/, "");
+      var mapped = new Set(window.POINTS.map(function (p) { return p.plant; }));
+      var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+      function draw() {
+        var only = document.getElementById("mapped").checked;
+        var grid = document.getElementById("grid");
+        grid.innerHTML = "";
+        window.PLANTS.filter(function (p) { return !only || mapped.has(p.id); }).forEach(function (p) {
+          var el = document.createElement("div");
+          el.className = "card";
+          el.innerHTML = "<h2>" + esc(p.name) + "</h2><div class='qr'></div><p class='sci'>" + esc(p.sci) + "</p><p class='fam'>" + esc(p.family) + "</p><p class='scan'>掃描看介紹與用途</p>";
+          grid.appendChild(el);
+          new QRCode(el.querySelector(".qr"), { text: base + "#/plant/" + p.id, width: 184, height: 184, correctLevel: QRCode.CorrectLevel.M });
+        });
+      }
+      document.getElementById("mapped").addEventListener("change", draw);
+      draw();
+    })();
+  </script>
+</body>
+</html>

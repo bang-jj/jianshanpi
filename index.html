@@ -1,27 +1,49 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山埤地區生物資料</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>尖山埤植物導覽</title>
+  <meta name="description" content="台糖柳營尖山埤渡假村的線上植物導覽：用地圖看自己在哪、附近有哪些植物，以及每種植物的介紹與用途。">
+  <meta name="theme-color" content="#1d4a37">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <h1>尖山埤地區生物資料</h1>
-    </header>
-    <main>
-        <section class="description">
-            <h2>歡迎探索尖山埤的生物世界！</h2>
-            <p>這裡紀錄了尖山埤渡假村內各地區的動物與植物資料，依地區做分隔，可以直接點擊你所在區域。</p>
-        </section>
-        <section class="map-section">
-            <h3>點擊地圖探索各區域生物</h3>
-               <object type="image/svg+xml" data="images/map_interactive.svg" style="width:100%;max-width:900px;">
-            <!-- 如果瀏覽器不支援 SVG，會顯示這裡的內容 -->
-         <img src="images/map.png" alt="尖山埤地圖 - 瀏覽器不支援互動地圖" style="width:100%;max-width:900px;">
-        </object>
-    </section>
+  <div class="app">
+    <aside class="panel" id="panel" aria-label="植物導覽">
+      <header class="brand">
+        <button class="grip" id="grip" aria-label="展開或收合清單" aria-expanded="true"></button>
+        <h1><a href="#/">尖山埤植物導覽</a></h1>
+        <p class="brand-sub">台糖柳營尖山埤渡假村</p>
+        <div class="search">
+          <label class="sr-only" for="q">搜尋植物</label>
+          <input id="q" type="search" placeholder="搜尋植物名稱，例如：月桃" autocomplete="off">
+        </div>
+        <nav class="tabs" role="tablist">
+          <a href="#/nearby" data-tab="nearby" role="tab">我附近</a>
+          <a href="#/zones" data-tab="zones" role="tab">分區</a>
+          <a href="#/list" data-tab="list" role="tab">植物圖鑑</a>
+          <a href="#/about" data-tab="about" role="tab">關於</a>
+        </nav>
+      </header>
+      <div class="panel-body" id="view" tabindex="-1"></div>
+    </aside>
+
+    <main class="map-wrap">
+      <div id="map" aria-label="園區地圖"></div>
+      <button class="locate" id="locate" type="button">
+        <span class="locate-dot" aria-hidden="true"></span><span id="locate-text">顯示我的位置</span>
+      </button>
     </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="data/plants.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
