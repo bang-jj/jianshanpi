@@ -7,6 +7,8 @@
 - **搜尋植物**（中文名、別名、學名皆可），看它在園區哪裡
 - 依用途篩選：食用、藥用、實用、景觀、外來入侵、有毒注意
 - 每種植物有簡介、用途與注意事項
+- 手機版像 Google 地圖：清單是可以上下拖曳的抽屜，往下滑只看地圖、往上滑查資料
+- 地圖可以兩指旋轉；點左上角指北針可讓地圖跟著手機方向轉，再點一次回到北方朝上
 - `signs.html` 可列印每種植物的 QR Code 牌卡，取代需要維護的實體立牌
 
 資料來源：國立臺南大學 生態暨環境資源學系〈生態調查－台糖柳營尖山埤渡假村〉第二組（114 年 6 月，指導教授 謝宗欣）。
@@ -68,4 +70,4 @@ photo: "images/plants/yuetao.jpg",
 
 ## 授權與致謝
 
-底圖 © OpenStreetMap 貢獻者；衛星影像 © Esri。地圖程式使用 [Leaflet](https://leafletjs.com/)，QR Code 使用 qrcodejs。
+底圖 © OpenStreetMap 貢獻者；衛星影像 © Esri。地圖程式使用 [Leaflet](https://leafletjs.com/) 與 leaflet-rotate，QR Code 使用 qrcodejs。

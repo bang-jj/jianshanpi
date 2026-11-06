@@ -28,7 +28,10 @@
   const view = $("#view"), panel = $("#panel");
 
   /* ---------------- 地圖 ---------------- */
-  const map = L.map("map", { zoomControl: false, maxZoom: 20 }).setView(SITE.center, 17);
+  const map = L.map("map", {
+    zoomControl: false, maxZoom: 20,
+    rotate: true, touchRotate: true, shiftKeyRotate: true, rotateControl: false, bearing: 0
+  }).setView(SITE.center, 17);
   L.control.zoom({ position: "topright" }).addTo(map);
 
   const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -43,7 +46,7 @@
 
   const zoneLayers = {};
   ZONES.forEach(z => {
-    const poly = L.polygon(z.polygon, { color: "#1d4a37", weight: 1.5, fillColor: "#2c6a50", fillOpacity: .08, dashArray: "4 4" })
+    const poly = L.polygon(z.polygon, { bubblingMouseEvents: false, color: "#1d4a37", weight: 1.5, fillColor: "#2c6a50", fillOpacity: .08, dashArray: "4 4" })
       .addTo(map)
       .on("click", () => { location.hash = "#/zone/" + z.id; });
     poly.bindTooltip(z.id + " " + z.name, { permanent: true, direction: "center", className: "zone-label" });
@@ -51,7 +54,7 @@
   });
 
   // 縮小時隱藏分區名稱，避免文字重疊
-  const syncLabels = () => map.getContainer().classList.toggle("far", map.getZoom() < 17);
+  const syncLabels = () => map.getContainer().classList.toggle("far", map.getZoom() < 18);
   map.on("zoomend", syncLabels); syncLabels();
 
   L.marker(SITE.center_point, {
@@ -64,7 +67,7 @@
     const p = byId[pt.plant];
     if (!p) { console.warn("點位對應不到植物：", pt); return; }
     const m = L.circleMarker([pt.lat, pt.lng], {
-      radius: 7, weight: 2, color: "#fff", fillColor: markerColor(p), fillOpacity: 1
+      radius: 7, weight: 2, color: "#fff", fillColor: markerColor(p), fillOpacity: 1, bubblingMouseEvents: false
     }).addTo(map);
     m.bindTooltip(p.name, { className: "ptip", direction: "top", offset: [0, -6] });
     m.on("click", () => { location.hash = "#/plant/" + p.id; });
@@ -84,10 +87,10 @@
     const b = L.latLngBounds(pts.map(pt => [pt.lat, pt.lng]));
     map.flyToBounds(b, { padding: [60, 60], maxZoom: 19, duration: .6, ...mapPadding() });
   }
-  // 手機版下方有抽屜，飛到某點時要把中心往上推
+  // 手機版下方有抽屜，飛到某點時要扣掉抽屜蓋住的高度
   function mapPadding() {
-    if (innerWidth > 760 || panel.classList.contains("collapsed")) return {};
-    return { paddingBottomRight: [20, panel.offsetHeight + 20] };
+    if (!isMobile()) return {};
+    return { paddingTopLeft: [20, 20], paddingBottomRight: [20, sheetHeight() + 20] };
   }
 
   /* ---------------- 定位 ---------------- */
@@ -117,7 +120,7 @@
     locText.textContent = "定位中（±" + acc + " 公尺）";
     if (firstFix) {
       firstFix = false;
-      if (distM(me, SITE.center) < 2000) map.flyTo(me, 18, { duration: .6, ...mapPadding() });
+      if (distM(me, SITE.center) < 2000) map.flyToBounds(L.latLng(me).toBounds(80), { maxZoom: 18, duration: .6, ...mapPadding() });
     }
     if (route.name === "nearby") renderNearby();
   }
@@ -127,14 +130,142 @@
     if (route.name === "nearby") renderNearby(err);
   }
   locBtn.addEventListener("click", () => {
-    if (watchId == null) { startLocate(); if (route.name !== "nearby") location.hash = "#/nearby"; }
-    else stopLocate();
+    if (watchId == null) startLocate(); else stopLocate();
   });
 
-  /* ---------------- 手機抽屜 ---------------- */
-  const grip = $("#grip");
-  function setCollapsed(c) { panel.classList.toggle("collapsed", c); grip.setAttribute("aria-expanded", String(!c)); setTimeout(() => map.invalidateSize(), 260); }
-  grip.addEventListener("click", () => setCollapsed(!panel.classList.contains("collapsed")));
+  /* ---------------- 地圖轉向：兩指旋轉、指北針、跟隨手機方向 ---------------- */
+  const compass = $("#compass"), needle = $("#needle");
+  let following = false, internalTurn = false, orientEvt = null;
+  function turnTo(deg) { internalTurn = true; map.setBearing(deg); internalTurn = false; }
+  function syncCompass() {
+    const b = map.getBearing();
+    needle.style.transform = "rotate(" + b + "deg)";
+    compass.classList.toggle("rotated", Math.abs(((b % 360) + 360) % 360) > .5 || following);
+    compass.setAttribute("aria-pressed", String(following));
+    compass.setAttribute("aria-label", following ? "停止跟隨手機方向，改回北方朝上" : (compass.classList.contains("rotated") ? "改回北方朝上" : "讓地圖跟著手機方向轉"));
+    $("#compass-text").textContent = following ? "跟隨方向" : "";
+  }
+  map.on("rotate", () => {
+    // 使用者用手指轉地圖時，就停止跟隨手機方向
+    if (!internalTurn && following) stopFollow(false);
+    syncCompass();
+  });
+  let lastHeading = null;
+  function onOrient(e) {
+    let heading = null;                                   // 手機朝向：從北方順時針的角度
+    if (typeof e.webkitCompassHeading === "number") heading = e.webkitCompassHeading;        // iOS
+    else if (e.absolute && typeof e.alpha === "number") heading = 360 - e.alpha;               // Android
+    if (heading == null) return;
+    const screenAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    heading = (heading + screenAngle + 360) % 360;
+    if (lastHeading != null && Math.abs(((heading - lastHeading + 540) % 360) - 180) < 2) return;  // 小於 2° 不重畫
+    lastHeading = heading;
+    turnTo(360 - heading);
+  }
+  async function startFollow() {
+    if (typeof DeviceOrientationEvent === "undefined") return toast("這個裝置不支援方向感測");
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {   // iOS 需要使用者同意
+      try { if (await DeviceOrientationEvent.requestPermission() !== "granted") return toast("需要允許「動作與方向」才能跟隨方向"); }
+      catch (err) { return toast("無法取得方向權限"); }
+    }
+    orientEvt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+    window.addEventListener(orientEvt, onOrient);
+    following = true; lastHeading = null; syncCompass();
+    toast("地圖會跟著手機方向轉；用手指轉動地圖即可停止");
+  }
+  function stopFollow(resetNorth) {
+    if (orientEvt) window.removeEventListener(orientEvt, onOrient);
+    following = false; orientEvt = null;
+    if (resetNorth) turnTo(0);
+    syncCompass();
+  }
+  compass.addEventListener("click", () => {
+    if (following) stopFollow(true);
+    else if (compass.classList.contains("rotated")) turnTo(0);
+    else startFollow();
+  });
+  syncCompass();
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+
+  /* ---------------- 手機抽屜（像 Google 地圖：往上滑查資料，往下滑看地圖） ---------------- */
+  const grip = $("#grip"), body = view, brand = $(".brand");
+  const isMobile = () => innerWidth <= 760;
+  let sheet = "peek";
+  const snapH = () => ({
+    peek: brand.offsetHeight,
+    half: Math.round(innerHeight * .5),
+    full: innerHeight - 64
+  });
+  const sheetHeight = () => isMobile() ? panel.getBoundingClientRect().height : 0;
+  function applyH(h, animate) {
+    panel.classList.toggle("dragging", !animate);
+    panel.style.height = h + "px";
+    document.documentElement.style.setProperty("--sheet-h", h + "px");
+  }
+  function setSheet(state) {
+    if (!isMobile()) return;
+    sheet = state;
+    applyH(snapH()[state], true);
+    panel.dataset.sheet = state;
+    grip.setAttribute("aria-expanded", String(state !== "peek"));
+    grip.setAttribute("aria-label", state === "peek" ? "展開清單" : "收合清單，只看地圖");
+  }
+  grip.addEventListener("click", () => setSheet(sheet === "peek" ? "half" : "peek"));
+  $("#q").addEventListener("focus", () => setSheet("full"));
+
+  // 拖曳：標頭任何地方都能拖；內容區在未全開時拖曳會移動抽屜，全開且捲到頂端時往下拖會收合
+  let drag = null;
+  panel.addEventListener("touchstart", e => {
+    if (!isMobile() || e.touches.length !== 1) return;
+    const y = e.touches[0].clientY;
+    drag = { y0: y, h0: panel.getBoundingClientRect().height, inBody: body.contains(e.target), decided: false, active: false, last: [[y, e.timeStamp]] };
+  }, { passive: true });
+  panel.addEventListener("touchmove", e => {
+    if (!drag) return;
+    const y = e.touches[0].clientY, dy = y - drag.y0;
+    if (!drag.decided) {
+      if (Math.abs(dy) < 6) return;
+      drag.decided = true;
+      drag.active = !drag.inBody || sheet !== "full" || (dy > 0 && body.scrollTop <= 0);
+      if (drag.active) { drag.y0 = y; drag.h0 = panel.getBoundingClientRect().height; if (document.activeElement === $("#q")) $("#q").blur(); }
+    }
+    if (!drag.active) return;
+    e.preventDefault();
+    const s = snapH();
+    applyH(Math.max(s.peek, Math.min(s.full, drag.h0 - (y - drag.y0))), false);
+    drag.last.push([y, e.timeStamp]); if (drag.last.length > 5) drag.last.shift();
+  }, { passive: false });
+  const endDrag = () => {
+    if (!drag || !drag.active) { drag = null; return; }
+    const [a, b] = [drag.last[0], drag.last[drag.last.length - 1]];
+    const v = (b[0] - a[0]) / Math.max(1, b[1] - a[1]);          // px/ms，正值＝往下甩
+    const h = panel.getBoundingClientRect().height, s = snapH();
+    const order = ["peek", "half", "full"];
+    let target;
+    if (Math.abs(v) > .45) {
+      const up = v < 0;
+      target = up ? order.find(k => s[k] > h + 10) || "full" : [...order].reverse().find(k => s[k] < h - 10) || "peek";
+    } else {
+      target = order.reduce((best, k) => Math.abs(s[k] - h) < Math.abs(s[best] - h) ? k : best, "peek");
+    }
+    drag = null;
+    setSheet(target);
+  };
+  panel.addEventListener("touchend", endDrag);
+  panel.addEventListener("touchcancel", endDrag);
+
+  // 點地圖空白處就把抽屜收下去
+  map.on("click", () => { if (isMobile() && sheet !== "peek") setSheet("peek"); });
+
+  addEventListener("resize", () => {
+    if (isMobile()) setSheet(sheet);
+    else { panel.style.height = ""; document.documentElement.style.removeProperty("--sheet-h"); }
+  });
 
   /* ---------------- 共用片段 ---------------- */
   const dotHtml = p => '<span class="dots" aria-hidden="true">' + p.tags.map(t => '<i style="background:' + TAGS[t].color + '"></i>').join("") + "</span>";
@@ -234,7 +365,7 @@
     highlight(pts.length ? pts.map(pt => pt.id) : []);
     if (pts.length) {
       fitPoints(pts);
-      $("#show-on-map").addEventListener("click", () => { fitPoints(pts); if (innerWidth <= 760) setCollapsed(true); });
+      $("#show-on-map").addEventListener("click", () => { setSheet("peek"); fitPoints(pts); });
     }
   }
 
@@ -295,7 +426,7 @@
   }
 
   /* ---------------- 路由 ---------------- */
-  let route = { name: "list" };
+  let route = { name: "list" }, firstRender = true;
   function parse() {
     const h = location.hash.replace(/^#\/?/, "").split("/");
     switch (h[0]) {
@@ -313,8 +444,12 @@
     document.querySelectorAll(".tabs a").forEach(a => a.setAttribute("aria-selected", String(a.dataset.tab === tab)));
     ({ plant: () => renderPlant(route.id), zone: () => renderZone(route.id), zones: renderZones, nearby: () => renderNearby(), about: renderAbout, list: renderList })[route.name]();
     view.scrollTop = 0;
-    if (innerWidth <= 760 && panel.classList.contains("collapsed") && route.name !== "plant") setCollapsed(false);
-    if (innerWidth <= 760 && route.name === "plant") setCollapsed(false);
+    // 手機：有新內容要看時，若抽屜是收著的就拉到一半；已經展開的維持原狀
+    if (isMobile()) {
+      if (firstRender) setSheet(route.name === "plant" ? "half" : "peek");
+      else if (sheet === "peek") setSheet("half");
+    }
+    firstRender = false;
     const title = route.name === "plant" && byId[route.id] ? byId[route.id].name + "｜" : "";
     document.title = title + "尖山埤植物導覽";
   }
